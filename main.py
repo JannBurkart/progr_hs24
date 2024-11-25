@@ -8,7 +8,7 @@ class IFCSplitter:
     def __init__(self, root):
         self.root = root
         self.root.title("IFC Splitter")
-        self.root.geometry("600x400")
+        self.root.geometry("500x200")
         
         # Initialisiere IFC-Modell und gefilterte Elemente
         self.ifc_model = None
@@ -31,7 +31,7 @@ class IFCSplitter:
         self.category_var.set("Kategorie wählen")
         Label(frame_top, text="Kategorie:").pack(side=tk.LEFT, padx=5)
         self.dropdown = Combobox(frame_top, textvariable=self.category_var, state="readonly", width=20)
-        self.dropdown['values'] = ["Außenwände", "Innenwände", "Fenster", "Türen", "Geschossdecken"]
+        self.dropdown['values'] = ["Außenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"]
         self.dropdown.pack(side=tk.LEFT, padx=10)
 
         # Filter-Button
@@ -74,12 +74,16 @@ class IFCSplitter:
         elif category == "Innenwände":
             elements = self.ifc_model.by_type("IfcWall")
             self.filtered_elements = self.filter_by_property(elements, "IsExternal", False)
+        elif category == "Stützen":
+            elements = self.ifc_model.by_type("IfcColumn")
         elif category == "Fenster":
             self.filtered_elements = self.ifc_model.by_type("IfcWindow")
         elif category == "Türen":
             self.filtered_elements = self.ifc_model.by_type("IfcDoor")
         elif category == "Geschossdecken":
             self.filtered_elements = self.ifc_model.by_type("IfcSlab")
+        elif category == "Gelände":
+            self.filtered_elements = self.ifc_model.by_type("IfcGeographicElement")
         else:
             self.filtered_elements = []
 
