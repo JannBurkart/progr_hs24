@@ -1,51 +1,87 @@
-import tkinter as tk
+import customtkinter as ctk
 from tkinter import filedialog, messagebox
-from tkinter.ttk import Combobox, Button, Label, Frame
 import ifcopenshell
 
 
 class IFCSplitter:
     def __init__(self, root):
+        # Setze CustomTkinter-Erscheinung und Theme
+        ctk.set_appearance_mode("Dark")
+        ctk.set_default_color_theme("dark-blue")
+
         self.root = root
         self.root.title("IFC Splitter")
-        self.root.geometry("500x200")
-        
+        self.root.geometry("750x500")
+        self.root.configure(bg="#1e1e1e")  # Hintergrund
+
         # Initialisiere IFC-Modell und gefilterte Elemente
         self.ifc_model = None
-        self.filtered_elements = []
+        self.selected_categories = []
+        self.category_dropdowns = []
 
-        # UI-Elemente
+        # Dashboard-Widgets erstellen
         self.create_widgets()
 
     def create_widgets(self):
         """Erstellt die Benutzeroberfläche."""
-        # Oberes Frame für Datei und Filteroptionen
-        frame_top = Frame(self.root, padding=10)
-        frame_top.pack(fill=tk.X, pady=10)
+        # Header
+        header_label = ctk.CTkLabel(
+            self.root, text="IFC Splitter", font=("Arial", 24, "bold"), text_color="white"
+        )
+        header_label.pack(pady=20)
 
-        # IFC-Datei hochladen
-        Button(frame_top, text="IFC-Datei hochladen", command=self.load_ifc).pack(side=tk.LEFT, padx=10)
+        # Dashboard-Container
+        container = ctk.CTkFrame(self.root, corner_radius=10, fg_color="#2e2e2e")  # Dashboard-Panel
+        container.pack(pady=10, padx=20, fill="both", expand=True)
 
-        # Dropdown für Filter
-        self.category_var = tk.StringVar()
-        self.category_var.set("Kategorie wählen")
-        Label(frame_top, text="Kategorie:").pack(side=tk.LEFT, padx=5)
-        self.dropdown = Combobox(frame_top, textvariable=self.category_var, state="readonly", width=20)
-        self.dropdown['values'] = ["Außenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"]
-        self.dropdown.pack(side=tk.LEFT, padx=10)
+        # Hochladen-Button
+        upload_button = ctk.CTkButton(
+            container, text="IFC-Datei hochladen", command=self.load_ifc, fg_color="#4a4a4a", hover_color="#5a5a5a"
+        )
+        upload_button.pack(pady=10, padx=20)
 
-        # Filter-Button
-        Button(frame_top, text="Filtern", command=self.filter_elements).pack(side=tk.LEFT, padx=10)
+        # Kategorie-Filter (Dropdown + Plus)
+        category_frame = ctk.CTkFrame(container, fg_color="#2e2e2e")
+        category_frame.pack(pady=10, padx=20, fill="y")
 
-        # Exportieren
-        frame_bottom = Frame(self.root, padding=10)
-        frame_bottom.pack(fill=tk.X, pady=10)
+        self.add_category_dropdown(category_frame)  # Initiales Dropdown
 
-        Button(frame_bottom, text="Neues IFC exportieren", command=self.export_ifc).pack(side=tk.LEFT, padx=10)
+        plus_button = ctk.CTkButton(
+            category_frame, text="+", width=30, command=lambda: self.add_category_dropdown(category_frame),
+            fg_color="#4a4a4a", hover_color="#5a5a5a"
+        )
+        plus_button.pack(side="right", padx=10)
 
-        # Statusanzeige
-        self.status_label = Label(self.root, text="Status: Bereit", foreground="green", anchor="w")
-        self.status_label.pack(fill=tk.X, padx=10, pady=10)
+        # Filtern-Button
+        filter_button = ctk.CTkButton(
+            container, text="Filtern", command=self.filter_elements, fg_color="#4a4a4a", hover_color="#5a5a5a"
+        )
+        filter_button.pack(pady=10, padx=20)
+
+        # Exportieren-Button
+        export_button = ctk.CTkButton(
+            container, text="Neues IFC exportieren", command=self.export_ifc, fg_color="#4a4a4a", hover_color="#5a5a5a"
+        )
+        export_button.pack(pady=10, padx=20)
+
+        # Status-Anzeige
+        self.status_label = ctk.CTkLabel(
+            container, text="Status: Bereit", font=("Arial", 14), text_color="green"
+        )
+        self.status_label.pack(pady=20, padx=20)
+
+    def add_category_dropdown(self, parent):
+        """Fügt ein neues Dropdown-Menü hinzu."""
+        category_var = ctk.StringVar(value="Kategorie wählen")
+        dropdown = ctk.CTkOptionMenu(
+            parent,
+            variable=category_var,
+            values=["Außenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"],
+            fg_color="#4a4a4a",
+            button_color="#5a5a5a",
+        )
+        dropdown.pack(side="left", padx=10, pady=5)
+        self.category_dropdowns.append((dropdown, category_var))
 
     def load_ifc(self):
         """Lädt eine IFC-Datei."""
@@ -53,42 +89,49 @@ class IFCSplitter:
         if file_path:
             try:
                 self.ifc_model = ifcopenshell.open(file_path)
-                self.status_label.config(text=f"IFC-Datei geladen: {file_path}", foreground="green")
+                self.status_label.configure(text=f"IFC-Datei geladen: {file_path}", text_color="green")
             except Exception as e:
-                self.status_label.config(text=f"Fehler: {e}", foreground="red")
+                self.status_label.configure(text=f"Fehler: {e}", text_color="red")
 
     def filter_elements(self):
-        """Filtert Elemente basierend auf der ausgewählten Kategorie."""
+        """Filtert Elemente basierend auf den ausgewählten Kategorien."""
         if not self.ifc_model:
             messagebox.showwarning("Warnung", "Bitte lade zuerst eine IFC-Datei!")
             return
-        
-        category = self.category_var.get()
-        if category == "Kategorie wählen":
-            messagebox.showwarning("Warnung", "Bitte wähle eine Kategorie aus!")
-            return
-        
-        if category == "Außenwände":
-            elements = self.ifc_model.by_type("IfcWall")
-            self.filtered_elements = self.filter_by_property(elements, "IsExternal", True)
-        elif category == "Innenwände":
-            elements = self.ifc_model.by_type("IfcWall")
-            self.filtered_elements = self.filter_by_property(elements, "IsExternal", False)
-        elif category == "Stützen":
-            elements = self.ifc_model.by_type("IfcColumn")
-        elif category == "Fenster":
-            self.filtered_elements = self.ifc_model.by_type("IfcWindow")
-        elif category == "Türen":
-            self.filtered_elements = self.ifc_model.by_type("IfcDoor")
-        elif category == "Geschossdecken":
-            self.filtered_elements = self.ifc_model.by_type("IfcSlab")
-        elif category == "Gelände":
-            self.filtered_elements = self.ifc_model.by_type("IfcGeographicElement")
-        else:
-            self.filtered_elements = []
+
+        self.selected_categories = []
+        self.filtered_elements = []
+
+        for dropdown, category_var in self.category_dropdowns:
+            category = category_var.get()
+            if category != "Kategorie wählen":
+                self.selected_categories.append(category)
+                self.filter_category(category)
 
         count = len(self.filtered_elements)
-        self.status_label.config(text=f"{count} Elemente in Kategorie '{category}' gefunden.", foreground="blue")
+        self.status_label.configure(
+            text=f"{count} Elemente in Kategorien {', '.join(self.selected_categories)} gefunden.",
+            text_color="blue"
+        )
+
+    def filter_category(self, category):
+        """Filtert eine einzelne Kategorie."""
+        if category == "Außenwände":
+            elements = self.ifc_model.by_type("IfcWall")
+            self.filtered_elements.extend(self.filter_by_property(elements, "IsExternal", True))
+        elif category == "Innenwände":
+            elements = self.ifc_model.by_type("IfcWall")
+            self.filtered_elements.extend(self.filter_by_property(elements, "IsExternal", False))
+        elif category == "Stützen":
+            self.filtered_elements.extend(self.ifc_model.by_type("IfcColumn"))
+        elif category == "Fenster":
+            self.filtered_elements.extend(self.ifc_model.by_type("IfcWindow"))
+        elif category == "Türen":
+            self.filtered_elements.extend(self.ifc_model.by_type("IfcDoor"))
+        elif category == "Geschossdecken":
+            self.filtered_elements.extend(self.ifc_model.by_type("IfcSlab"))
+        elif category == "Gelände":
+            self.filtered_elements.extend(self.ifc_model.by_type("IfcGeographicElement"))
 
     def filter_by_property(self, elements, property_name, expected_value):
         """Filtert Elemente basierend auf einer bestimmten Eigenschaft."""
@@ -115,43 +158,35 @@ class IFCSplitter:
                 # Neues IFC-Modell mit dem gleichen Schema wie das Original erstellen
                 new_model = ifcopenshell.file(schema=self.ifc_model.schema)
 
-                # Kopiere globale relevante Objekte wie IfcProject, IfcSite, IfcBuilding
-                project = self.ifc_model.by_type("IfcProject")[0]
-                new_model.add(project)
-
-                for site in self.ifc_model.by_type("IfcSite"):
-                    new_model.add(site)
-
-                for building in self.ifc_model.by_type("IfcBuilding"):
-                    new_model.add(building)
+                # Kopiere globale relevante Objekte
+                for obj_type in ["IfcProject", "IfcSite", "IfcBuilding"]:
+                    for obj in self.ifc_model.by_type(obj_type):
+                        new_model.add(obj)
 
                 # Kopiere Bauteile und deren Relationen
                 for elem in self.filtered_elements:
                     new_model.add(elem)
 
-                    # Kopiere Relationen, z. B. IfcRelContainedInSpatialStructure
+                    # Kopiere Relationen und andere Daten
                     if hasattr(elem, "IsContainedInStructure"):
                         for rel in elem.IsContainedInStructure:
                             new_model.add(rel)
 
-                    # Kopiere geometrische und verwandte Daten
                     if hasattr(elem, "Representation") and elem.Representation:
                         new_model.add(elem.Representation)
 
-                    # Kopiere zugehörige Assoziationen, Materialien etc.
                     if hasattr(elem, "HasAssociations"):
-                        for association in elem.HasAssociations:
-                            new_model.add(association)
+                        for assoc in elem.HasAssociations:
+                            new_model.add(assoc)
 
-                # Schreibe die neue Datei
                 new_model.write(file_path)
-                self.status_label.config(text=f"Export erfolgreich: {file_path}", foreground="green")
+                self.status_label.configure(text=f"Export erfolgreich: {file_path}", text_color="green")
             except Exception as e:
-                self.status_label.config(text=f"Fehler beim Export: {e}", foreground="red")
+                self.status_label.configure(text=f"Fehler beim Export: {e}", text_color="red")
 
 
 # Hauptprogramm
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = IFCSplitter(root)
-    root.mainloop()
+    app = ctk.CTk()
+    splitter = IFCSplitter(app)
+    app.mainloop()
