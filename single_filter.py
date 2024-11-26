@@ -11,13 +11,12 @@ class IFCSplitter:
 
         self.root = root
         self.root.title("IFC Splitter")
-        self.root.geometry("750x500")
+        self.root.geometry("750x400")
         self.root.configure(bg="#1e1e1e")  # Hintergrund
 
         # Initialisiere IFC-Modell und gefilterte Elemente
         self.ifc_model = None
-        self.selected_categories = []
-        self.category_dropdowns = []
+        self.filtered_elements = []
 
         # Dashboard-Widgets erstellen
         self.create_widgets()
@@ -40,11 +39,16 @@ class IFCSplitter:
         )
         upload_button.pack(pady=10, padx=20)
 
-        # Kategorie-Filter (Dropdowns und Plus)
-        category_frame = ctk.CTkFrame(container, fg_color="#2e2e2e")
-        category_frame.pack(pady=10, padx=20, fill="y")
-
-        self.add_category_dropdown(category_frame)  # Initiales Dropdown
+        # Dropdown-Menü für Filter
+        self.category_var = ctk.StringVar(value="Kategorie wählen")
+        dropdown = ctk.CTkOptionMenu(
+            container,
+            variable=self.category_var,
+            values=["Außenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"],
+            fg_color="#4a4a4a",
+            button_color="#5a5a5a",
+        )
+        dropdown.pack(pady=10, padx=20)
 
         # Filtern-Button
         filter_button = ctk.CTkButton(
@@ -64,35 +68,6 @@ class IFCSplitter:
         )
         self.status_label.pack(pady=20, padx=20)
 
-    def add_category_dropdown(self, parent):
-        """Fügt ein neues Dropdown-Menü unter den bisherigen hinzu und zentriert sie."""
-        category_var = ctk.StringVar(value="Kategorie wählen")
-        dropdown = ctk.CTkOptionMenu(
-            parent,
-            variable=category_var,
-            values=["Außenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"],
-            fg_color="#4a4a4a",
-            button_color="#5a5a5a",
-        )
-        # Zentriere das Dropdown im Parent
-        dropdown.grid(row=len(self.category_dropdowns), column=0, padx=10, pady=5, sticky="nsew")
-        self.category_dropdowns.append((dropdown, category_var))
-
-        # Aktualisiere die Position des Plus-Buttons
-        self.update_plus_button_position(parent)
-
-    def update_plus_button_position(self, parent):
-        """Positioniert den Plus-Button rechts neben dem letzten Dropdown-Menü."""
-        if hasattr(self, "plus_button"):
-            self.plus_button.destroy()  # Entferne den alten Button
-
-        # Der Plus-Button wird immer rechts neben dem letzten Dropdown angezeigt
-        self.plus_button = ctk.CTkButton(
-            parent, text="+", width=30, command=lambda: self.add_category_dropdown(parent),
-            fg_color="#4a4a4a", hover_color="#5a5a5a"
-        )
-        self.plus_button.grid(row=len(self.category_dropdowns)-1, column=1, padx=10, pady=5, sticky="nsew")
-
     def load_ifc(self):
         """Lädt eine IFC-Datei."""
         file_path = filedialog.askopenfilename(filetypes=[("IFC-Dateien", "*.ifc")])
@@ -104,44 +79,37 @@ class IFCSplitter:
                 self.status_label.configure(text=f"Fehler: {e}", text_color="red")
 
     def filter_elements(self):
-        """Filtert Elemente basierend auf den ausgewählten Kategorien."""
+        """Filtert Elemente basierend auf der ausgewählten Kategorie."""
         if not self.ifc_model:
             messagebox.showwarning("Warnung", "Bitte lade zuerst eine IFC-Datei!")
             return
 
-        self.selected_categories = []
-        self.filtered_elements = []
+        category = self.category_var.get()
+        if category == "Kategorie wählen":
+            messagebox.showwarning("Warnung", "Bitte wähle eine Kategorie aus!")
+            return
 
-        for dropdown, category_var in self.category_dropdowns:
-            category = category_var.get()
-            if category != "Kategorie wählen":
-                self.selected_categories.append(category)
-                self.filter_category(category)
-
-        count = len(self.filtered_elements)
-        self.status_label.configure(
-            text=f"{count} Elemente in Kategorien {', '.join(self.selected_categories)} gefunden.",
-            text_color="blue"
-        )
-
-    def filter_category(self, category):
-        """Filtert eine einzelne Kategorie."""
         if category == "Außenwände":
             elements = self.ifc_model.by_type("IfcWall")
-            self.filtered_elements.extend(self.filter_by_property(elements, "IsExternal", True))
+            self.filtered_elements = self.filter_by_property(elements, "IsExternal", True)
         elif category == "Innenwände":
             elements = self.ifc_model.by_type("IfcWall")
-            self.filtered_elements.extend(self.filter_by_property(elements, "IsExternal", False))
+            self.filtered_elements = self.filter_by_property(elements, "IsExternal", False)
         elif category == "Stützen":
-            self.filtered_elements.extend(self.ifc_model.by_type("IfcColumn"))
+            self.filtered_elements = self.ifc_model.by_type("IfcColumn")
         elif category == "Fenster":
-            self.filtered_elements.extend(self.ifc_model.by_type("IfcWindow"))
+            self.filtered_elements = self.ifc_model.by_type("IfcWindow")
         elif category == "Türen":
-            self.filtered_elements.extend(self.ifc_model.by_type("IfcDoor"))
+            self.filtered_elements = self.ifc_model.by_type("IfcDoor")
         elif category == "Geschossdecken":
-            self.filtered_elements.extend(self.ifc_model.by_type("IfcSlab"))
+            self.filtered_elements = self.ifc_model.by_type("IfcSlab")
         elif category == "Gelände":
-            self.filtered_elements.extend(self.ifc_model.by_type("IfcGeographicElement"))
+            self.filtered_elements = self.ifc_model.by_type("IfcGeographicElement")
+        else:
+            self.filtered_elements = []
+
+        count = len(self.filtered_elements)
+        self.status_label.configure(text=f"{count} Elemente in Kategorie '{category}' gefunden.", text_color="blue")
 
     def filter_by_property(self, elements, property_name, expected_value):
         """Filtert Elemente basierend auf einer bestimmten Eigenschaft."""

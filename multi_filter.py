@@ -40,11 +40,17 @@ class IFCSplitter:
         )
         upload_button.pack(pady=10, padx=20)
 
-        # Kategorie-Filter (Dropdowns und Plus)
+        # Kategorie-Filter (Dropdown + Plus)
         category_frame = ctk.CTkFrame(container, fg_color="#2e2e2e")
         category_frame.pack(pady=10, padx=20, fill="y")
 
         self.add_category_dropdown(category_frame)  # Initiales Dropdown
+
+        plus_button = ctk.CTkButton(
+            category_frame, text="+", width=30, command=lambda: self.add_category_dropdown(category_frame),
+            fg_color="#4a4a4a", hover_color="#5a5a5a"
+        )
+        plus_button.pack(side="right", padx=10)
 
         # Filtern-Button
         filter_button = ctk.CTkButton(
@@ -65,7 +71,7 @@ class IFCSplitter:
         self.status_label.pack(pady=20, padx=20)
 
     def add_category_dropdown(self, parent):
-        """Fügt ein neues Dropdown-Menü unter den bisherigen hinzu und zentriert sie."""
+        """Fügt ein neues Dropdown-Menü hinzu."""
         category_var = ctk.StringVar(value="Kategorie wählen")
         dropdown = ctk.CTkOptionMenu(
             parent,
@@ -74,24 +80,8 @@ class IFCSplitter:
             fg_color="#4a4a4a",
             button_color="#5a5a5a",
         )
-        # Zentriere das Dropdown im Parent
-        dropdown.grid(row=len(self.category_dropdowns), column=0, padx=10, pady=5, sticky="nsew")
+        dropdown.pack(side="left", padx=10, pady=5)
         self.category_dropdowns.append((dropdown, category_var))
-
-        # Aktualisiere die Position des Plus-Buttons
-        self.update_plus_button_position(parent)
-
-    def update_plus_button_position(self, parent):
-        """Positioniert den Plus-Button rechts neben dem letzten Dropdown-Menü."""
-        if hasattr(self, "plus_button"):
-            self.plus_button.destroy()  # Entferne den alten Button
-
-        # Der Plus-Button wird immer rechts neben dem letzten Dropdown angezeigt
-        self.plus_button = ctk.CTkButton(
-            parent, text="+", width=30, command=lambda: self.add_category_dropdown(parent),
-            fg_color="#4a4a4a", hover_color="#5a5a5a"
-        )
-        self.plus_button.grid(row=len(self.category_dropdowns)-1, column=1, padx=10, pady=5, sticky="nsew")
 
     def load_ifc(self):
         """Lädt eine IFC-Datei."""
