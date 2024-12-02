@@ -1,5 +1,9 @@
+# Importiere Module
 import customtkinter as ctk
-from ifc_functions.ifc_loader import load_ifc
+import ifcopenshell
+from tkinter import filedialog, messagebox
+
+# Importiere Funktionen
 from ifc_functions.ifc_filter import filter_elements
 from ifc_functions.ifc_exporter import export_ifc
 class IFCSplitter:
@@ -21,6 +25,8 @@ class IFCSplitter:
         # Dashboard-Widgets erstellen
         self.create_widgets()
 
+
+
     def create_widgets(self):
         """Erstellt die Benutzeroberfläche."""
         # Header
@@ -35,13 +41,14 @@ class IFCSplitter:
 
         # Hochladen-Button
         upload_button = ctk.CTkButton(
-            container, text="IFC-Datei hochladen", command=load_ifc, fg_color="#4a4a4a", hover_color="#5a5a5a"
+            container, text="IFC-Datei hochladen", command=self.load_ifc, fg_color="#4a4a4a", hover_color="#5a5a5a"
         )
         upload_button.pack(pady=10, padx=20)
 
         # Kategorie-Filter (Dropdowns und Plus)
         category_frame = ctk.CTkFrame(container, fg_color="#2e2e2e")
         category_frame.pack(pady=10, padx=20, fill="y")
+        #category_frame.place(relx=0.534, rely=0.128, anchor="n")
 
         self.add_category_dropdown(category_frame)  # Initiales Dropdown
 
@@ -62,6 +69,18 @@ class IFCSplitter:
             container, text="Status: Bereit", font=("Arial", 14), text_color="green"
         )
         self.status_label.pack(pady=20, padx=20)
+
+
+
+    def load_ifc(self):
+        """Lädt eine IFC-Datei."""
+        file_path = filedialog.askopenfilename(filetypes=[("IFC-Dateien", "*.ifc")])
+        if file_path:
+            try:
+                self.ifc_model = ifcopenshell.open(file_path)
+                self.status_label.configure(text=f"IFC-Datei geladen: {file_path}", text_color="green")
+            except Exception as e:
+                self.status_label.configure(text=f"Fehler: {e}", text_color="red")
 
 
 
@@ -95,7 +114,7 @@ class IFCSplitter:
             fg_color="#4a4a4a", hover_color="#5a5a5a"
         )
         self.plus_button.grid(row=len(self.category_dropdowns)-1, column=1, padx=10, pady=5, sticky="nsew")
-    
+
 
 
 # Hauptprogramm
