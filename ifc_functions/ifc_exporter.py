@@ -1,4 +1,3 @@
-# ifc_exporter.py
 import ifcopenshell
 from tkinter import filedialog, messagebox
 

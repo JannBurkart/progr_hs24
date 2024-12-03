@@ -3,14 +3,14 @@ from tkinter import filedialog, messagebox
 import ifcopenshell
 
 
-class IFCSplitter:
+class IFCSearcher:
     def __init__(self, root):
         # Setze CustomTkinter-Erscheinung und Theme
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("dark-blue")
 
         self.root = root
-        self.root.title("IFC Splitter")
+        self.root.title("IFC Searcher")
         self.root.geometry("750x500")
         self.root.configure(bg="#1e1e1e")  # Hintergrund
 
@@ -26,7 +26,7 @@ class IFCSplitter:
         """Erstellt die Benutzeroberfläche."""
         # Header
         header_label = ctk.CTkLabel(
-            self.root, text="IFC Splitter", font=("Arial", 24, "bold"), text_color="white"
+            self.root, text="IFC Searcher", font=("Arial", 24, "bold"), text_color="white"
         )
         header_label.pack(pady=20)
 
@@ -198,5 +198,5 @@ class IFCSplitter:
 # Hauptprogramm
 if __name__ == "__main__":
     app = ctk.CTk()
-    splitter = IFCSplitter(app)
+    splitter = IFCSearcher(app)
     app.mainloop()

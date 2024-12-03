@@ -1,4 +1,3 @@
-# ifc_filter.py
 from tkinter import messagebox
 
 def filter_elements(selected_elem):
