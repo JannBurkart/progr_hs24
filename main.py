@@ -70,7 +70,7 @@ class IFCSearcher:
         dropdown = ctk.CTkOptionMenu(
             parent,
             variable=category_var,
-            values=["Außenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"],
+            values=["Aussenwände", "Innenwände", "Stützen", "Fenster", "Türen", "Geschossdecken", "Gelände"],
             fg_color="#4a4a4a",
             button_color="#5a5a5a",
         )
@@ -128,7 +128,7 @@ class IFCSearcher:
     # Kategorien definieren
     def filter_category(self, category):
         """Filtert eine einzelne Kategorie."""
-        if category == "Außenwände":
+        if category == "Aussenwände":
             elements = self.ifc_model.by_type("IfcWall")
             self.filtered_elements.extend(self.filter_by_property(elements, "IsExternal", True))
         elif category == "Innenwände":
