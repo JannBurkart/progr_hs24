@@ -191,15 +191,27 @@ class IFCSearcher:
                         new_model.add(obj)
 
                 # Kopiere Bauteile und deren Relationen
-                for element in self.filtered_elements:
-                    new_element = new_model.add(element)
+                for elem in self.filtered_elements:
+                    new_model.add(elem)
+
+                    # Kopiere Relationen und andere Daten
+                    if hasattr(elem, "IsContainedInStructure"):
+                        for rel in elem.IsContainedInStructure:
+                            new_model.add(rel)
+
+                    if hasattr(elem, "Representation") and elem.Representation:
+                        new_model.add(elem.Representation)
+
+                    if hasattr(elem, "HasAssociations"):
+                        for assoc in elem.HasAssociations:
+                            new_model.add(assoc)
 
                 new_model.write(file_path)
-                self.status_label.configure(text="IFC-Datei erfolgreich exportiert.", text_color="green")
+                self.status_label.configure(text=f"Export erfolgreich: {file_path}", text_color="green")
             except Exception as e:
-                self.status_label.configure(text=f"Export fehlgeschlagen: {e}", text_color="red")
+                self.status_label.configure(text=f"Fehler beim Export: {e}", text_color="red")
 
-    # Excel exportieren
+    # Export zu Excel
     def export_excel(self):
         """Exportiert die gefilterten Elemente in eine Excel-Datei."""
         if not self.filtered_elements:
@@ -210,42 +222,40 @@ class IFCSearcher:
         if file_path:
             try:
                 data = []
-
                 for elem in self.filtered_elements:
-                    row = {
-                        "GUID": elem.GlobalId,
-                        "Name": elem.Name,
-                        "Typ": elem.is_a(),
-                    }
-
-                    quantities = self.get_quantities_dict(elem)
-                    row.update(quantities)
-
-                    data.append(row)
+                    guid = elem.GlobalId
+                    name = elem.Name if hasattr(elem, "Name") else "N/A"
+                    element_type = elem.is_a()
+                    properties = self.get_properties(elem)
+                    data.append({
+                        "GUID": guid,
+                        "Name": name,
+                        "Typ": element_type,
+                        "Properties": properties
+                    })
 
                 df = pd.DataFrame(data)
                 df.to_excel(file_path, index=False)
-                self.status_label.configure(text="Excel-Datei erfolgreich exportiert.", text_color="green")
+                self.status_label.configure(text=f"Excel-Export erfolgreich: {file_path}", text_color="green")
             except Exception as e:
-                self.status_label.configure(text=f"Export fehlgeschlagen: {e}", text_color="red")
+                self.status_label.configure(text=f"Fehler beim Excel-Export: {e}", text_color="red")
 
-    def get_quantities_dict(self, element):
-        """Holt Mengeninformationen eines Elements als Dictionary."""
-        quantities = {}
+    def get_properties(self, element):
+        """Holt zusätzliche Eigenschaften eines Elements."""
+        properties = []
         if hasattr(element, "IsDefinedBy"):
             for definition in element.IsDefinedBy:
                 if definition.is_a("IfcRelDefinesByProperties"):
                     prop_def = definition.RelatingPropertyDefinition
-                    if prop_def.is_a("IfcElementQuantity"):
-                        for quantity in prop_def.Quantities:
-                            if hasattr(quantity, "Name") and hasattr(quantity, "NominalValue"):
-                                value = quantity.NominalValue
-                                if hasattr(value, "wrappedValue"):
-                                    value = value.wrappedValue
-                                quantities[quantity.Name] = value
-        return quantities
+                    if prop_def.is_a("IfcPropertySet"):
+                        for prop in prop_def.HasProperties:
+                            value = getattr(prop, "NominalValue", "N/A")
+                            if hasattr(value, "wrappedValue"):
+                                value = value.wrappedValue
+                            properties.append(f"{prop.Name}: {value}")
+        return ", ".join(properties) if properties else "N/A"
 
-
+# Anwendung starten
 if __name__ == "__main__":
     root = ctk.CTk()
     app = IFCSearcher(root)
