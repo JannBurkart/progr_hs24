@@ -1,7 +1,8 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import ifcopenshell
-import time
+import pandas as pd
+
 
 class IFCSearcher:
     def __init__(self, root):
@@ -12,7 +13,7 @@ class IFCSearcher:
         self.root = root
         self.root.title("IFC Searcher")
         self.root.geometry("750x500")
-        self.root.configure(bg="#1e1e1e")  # <- Hintergrund
+        self.root.configure(bg="#1e1e1e") # <- Hintergrund
 
         # IFC-Modell und gefilterte Elemente
         self.ifc_model = None
@@ -58,23 +59,17 @@ class IFCSearcher:
         )
         export_button.pack(pady=10, padx=20)
 
+        # Excel-Export-Button
+        excel_export_button = ctk.CTkButton(
+            container, text="Als Excel exportieren", command=self.export_excel, fg_color="#4a4a4a", hover_color="#5a5a5a"
+        )
+        excel_export_button.pack(pady=10, padx=20)
+
         # Status-Anzeige
         self.status_label = ctk.CTkLabel(
             container, text="Status: Bereit", font=("Arial", 14), text_color="green"
         )
         self.status_label.pack(pady=20, padx=20)
-
-        # Fortschrittsanzeige hinzufügen
-        self.progress_bar = ctk.CTkProgressBar(container, orientation="horizontal", mode="determinate")
-        self.progress_bar.pack(pady=10, padx=20, fill="x")
-        self.progress_bar.set(0)
-        self.progress_bar.pack_forget()
-
-    def show_progress(self, progress):
-        """Aktualisiert den Fortschrittsbalken."""
-        self.progress_bar.pack(pady=10, padx=20, fill="x")
-        self.progress_bar.set(progress)
-        self.root.update_idletasks()
 
     def add_category_dropdown(self, parent):
         """Fügt ein neues Dropdown-Menü unter den bisherigen hinzu und zentriert sie."""
@@ -86,36 +81,36 @@ class IFCSearcher:
             fg_color="#4a4a4a",
             button_color="#5a5a5a",
         )
+        # Zentriere das Dropdown im Parent
         dropdown.grid(row=len(self.category_dropdowns), column=0, padx=10, pady=5, sticky="nsew")
         self.category_dropdowns.append((dropdown, category_var))
+
+        # Aktualisiere die Position des Plus-Buttons immer rechts neben dem letzten Dropdown
         self.update_plus_button_position(parent)
 
     def update_plus_button_position(self, parent):
         """Positioniert den Plus-Button rechts neben dem letzten Dropdown-Menü."""
         if hasattr(self, "plus_button"):
-            self.plus_button.destroy()
+            self.plus_button.destroy()  # <- Entferne den alten Button
         self.plus_button = ctk.CTkButton(
             parent, text="+", width=30, command=lambda: self.add_category_dropdown(parent),
             fg_color="#4a4a4a", hover_color="#5a5a5a"
         )
         self.plus_button.grid(row=len(self.category_dropdowns)-1, column=1, padx=10, pady=5, sticky="nsew")
 
+    # Beginn der Funktionen
+    # IFC hochladen
     def load_ifc(self):
-        """Lädt eine IFC-Datei mit Fortschrittsanzeige."""
-        file_path = filedialog.askopenfilename(filetypes=[("IFC-Dateien", "*.ifc")])
+        """Lädt eine IFC-Datei."""
+        file_path = filedialog.askopenfilename(filetypes=[["IFC-Dateien", "*.ifc"]])
         if file_path:
             try:
-                self.show_progress(0)
-                for i in range(1, 11):  # Simulierter Fortschritt
-                    time.sleep(0.1)  # Kurze Verzögerung
-                    self.show_progress(i / 10)
                 self.ifc_model = ifcopenshell.open(file_path)
                 self.status_label.configure(text=f"IFC-Datei geladen: {file_path}", text_color="green")
             except Exception as e:
                 self.status_label.configure(text=f"Fehler: {e}", text_color="red")
-            finally:
-                self.progress_bar.pack_forget()
 
+    # Elemente nach Kategorie filtern
     def filter_elements(self):
         """Filtert Elemente basierend auf den ausgewählten Kategorien."""
         if not self.ifc_model:
@@ -125,24 +120,19 @@ class IFCSearcher:
         self.selected_categories = []
         self.filtered_elements = []
 
-        total_steps = len(self.category_dropdowns)
-        current_step = 0
-
         for dropdown, category_var in self.category_dropdowns:
             category = category_var.get()
             if category != "Kategorie wählen":
                 self.selected_categories.append(category)
                 self.filter_category(category)
-                current_step += 1
-                self.show_progress(current_step / total_steps)
 
         count = len(self.filtered_elements)
         self.status_label.configure(
             text=f"{count} Elemente in Kategorien {', '.join(self.selected_categories)} gefunden.",
             text_color="blue"
         )
-        self.progress_bar.pack_forget()
 
+    # Kategorien definieren
     def filter_category(self, category):
         """Filtert eine einzelne Kategorie."""
         if category == "Aussenwände":
@@ -168,6 +158,7 @@ class IFCSearcher:
         elif category == "Gelände":
             self.filtered_elements.extend(self.ifc_model.by_type("IfcGeographicElement"))
 
+    # Bauteil-Infos werden mitgegeben
     def filter_by_property(self, elements, property_name, expected_value):
         """Filtert Elemente basierend auf einer bestimmten Eigenschaft."""
         filtered = []
@@ -181,22 +172,91 @@ class IFCSearcher:
                                 filtered.append(element)
         return filtered
 
+    # neues IFC exportieren
     def export_ifc(self):
         """Exportiert die gefilterten Elemente in eine neue IFC-Datei."""
         if not self.filtered_elements:
             messagebox.showwarning("Warnung", "Keine gefilterten Elemente zum Exportieren!")
             return
-        file_path = filedialog.asksaveasfilename(defaultextension=".ifc", filetypes=[("IFC-Dateien", "*.ifc")])
+
+        file_path = filedialog.asksaveasfilename(defaultextension=".ifc", filetypes=[["IFC-Dateien", "*.ifc"]])
         if file_path:
             try:
-                self.show_progress(0)
-                time.sleep(0.2)  # Simulierter Exportbeginn
-                self.status_label.configure(text=f"Export erfolgreich: {file_path}", text_color="green")
-            finally:
-                self.progress_bar.pack_forget()
+                # Neues IFC-Modell mit dem gleichen Schema wie das Original erstellen
+                new_model = ifcopenshell.file(schema=self.ifc_model.schema)
 
-# Ausführung
+                # Kopiere global relevante Objekte
+                for obj_type in ["IfcProject", "IfcSite", "IfcBuilding"]:
+                    for obj in self.ifc_model.by_type(obj_type):
+                        new_model.add(obj)
+
+                # Kopiere Bauteile und deren Relationen
+                for elem in self.filtered_elements:
+                    new_model.add(elem)
+
+                    # Kopiere Relationen und andere Daten
+                    if hasattr(elem, "IsContainedInStructure"):
+                        for rel in elem.IsContainedInStructure:
+                            new_model.add(rel)
+
+                    if hasattr(elem, "Representation") and elem.Representation:
+                        new_model.add(elem.Representation)
+
+                    if hasattr(elem, "HasAssociations"):
+                        for assoc in elem.HasAssociations:
+                            new_model.add(assoc)
+
+                new_model.write(file_path)
+                self.status_label.configure(text=f"Export erfolgreich: {file_path}", text_color="green")
+            except Exception as e:
+                self.status_label.configure(text=f"Fehler beim Export: {e}", text_color="red")
+
+    # Export zu Excel
+    def export_excel(self):
+        """Exportiert die gefilterten Elemente in eine Excel-Datei."""
+        if not self.filtered_elements:
+            messagebox.showwarning("Warnung", "Keine gefilterten Elemente zum Exportieren!")
+            return
+
+        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[["Excel-Dateien", "*.xlsx"]])
+        if file_path:
+            try:
+                data = []
+                for elem in self.filtered_elements:
+                    guid = elem.GlobalId
+                    name = elem.Name if hasattr(elem, "Name") else "N/A"
+                    element_type = elem.is_a()
+                    properties = self.get_properties(elem)
+                    data.append({
+                        "GUID": guid,
+                        "Name": name,
+                        "Typ": element_type,
+                        "Properties": properties
+                    })
+
+                df = pd.DataFrame(data)
+                df.to_excel(file_path, index=False)
+                self.status_label.configure(text=f"Excel-Export erfolgreich: {file_path}", text_color="green")
+            except Exception as e:
+                self.status_label.configure(text=f"Fehler beim Excel-Export: {e}", text_color="red")
+
+    def get_properties(self, element):
+        """Holt zusätzliche Eigenschaften eines Elements."""
+        properties = []
+        if hasattr(element, "IsDefinedBy"):
+            for definition in element.IsDefinedBy:
+                if definition.is_a("IfcRelDefinesByProperties"):
+                    prop_def = definition.RelatingPropertyDefinition
+                    if prop_def.is_a("IfcPropertySet"):
+                        for prop in prop_def.HasProperties:
+                            value = getattr(prop, "NominalValue", "N/A")
+                            if hasattr(value, "wrappedValue"):
+                                value = value.wrappedValue
+                            properties.append(f"{prop.Name}: {value}")
+        return ", ".join(properties) if properties else "N/A"
+
+# Anwendung starten
 if __name__ == "__main__":
-    app = ctk.CTk()
-    splitter = IFCSearcher(app)
-    app.mainloop()
+    root = ctk.CTk()
+    app = IFCSearcher(root)
+    root.mainloop()
