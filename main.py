@@ -13,7 +13,7 @@ class IFCSearcher:
         self.root = root
         self.root.title("IFC Searcher")
         self.root.geometry("750x500")
-        self.root.configure(bg="#1e1e1e") # <- Hintergrund
+        self.root.configure(bg="#1e1e1e")  # <- Hintergrund
 
         # IFC-Modell und gefilterte Elemente
         self.ifc_model = None
@@ -172,7 +172,7 @@ class IFCSearcher:
                                 filtered.append(element)
         return filtered
 
-    # neues IFC exportieren
+    # Neues IFC exportieren
     def export_ifc(self):
         """Exportiert die gefilterten Elemente in eine neue IFC-Datei."""
         if not self.filtered_elements:
@@ -190,18 +190,32 @@ class IFCSearcher:
                     for obj in self.ifc_model.by_type(obj_type):
                         new_model.add(obj)
 
-                # Kopiere Bauteile und deren Relationen
+                # Kopiere Bauteile
                 for element in self.filtered_elements:
-                    new_element = new_model.add(element)
+                    new_model.add(element)
 
+                # Speichere die neue IFC-Datei
                 new_model.write(file_path)
-                self.status_label.configure(text="IFC-Datei erfolgreich exportiert.", text_color="green")
+                self.status_label.configure(
+                    text=f"Gefilterte IFC-Datei exportiert: {file_path}", text_color="green"
+                )
             except Exception as e:
-                self.status_label.configure(text=f"Export fehlgeschlagen: {e}", text_color="red")
+                self.status_label.configure(text=f"Fehler: {e}", text_color="red")
 
-    # Excel exportieren
+    def get_quantities_dict(self, element):
+        """Extrahiert Mengeninformationen aus einem IFC-Element."""
+        quantities = {}
+        for definition in element.IsDefinedBy:
+            if definition.is_a("IfcRelDefinesByProperties"):
+                property_set = definition.RelatingPropertyDefinition
+                if property_set.is_a("IfcElementQuantity"):
+                    for quantity in property_set.Quantities:
+                        quantities[quantity.Name] = getattr(quantity, "NominalValue", getattr(quantity, "LengthValue", None))
+        return quantities
+
+    # Exportieren nach Excel
     def export_excel(self):
-        """Exportiert die gefilterten Elemente in eine Excel-Datei."""
+        """Exportiert die gefilterten Elemente und ihre Maße in eine Excel-Datei."""
         if not self.filtered_elements:
             messagebox.showwarning("Warnung", "Keine gefilterten Elemente zum Exportieren!")
             return
@@ -210,40 +224,50 @@ class IFCSearcher:
         if file_path:
             try:
                 data = []
-
-                for elem in self.filtered_elements:
+                for element in self.filtered_elements:
                     row = {
-                        "GUID": elem.GlobalId,
-                        "Name": elem.Name,
-                        "Typ": elem.is_a(),
+                        "GlobalId": element.GlobalId,
+                        "Name": element.Name,
+                        "Type": element.is_a(),
                     }
-
-                    quantities = self.get_quantities_dict(elem)
+                    quantities = self.get_quantities_dict(element)
                     row.update(quantities)
+
+                    # Füge geometrische Maße hinzu
+                    if hasattr(element, "Representation") and element.Representation:
+                        for representation in element.Representation.Representations:
+                            if representation.is_a("IfcShapeRepresentation"):
+                                for item in representation.Items:
+                                    if item.is_a("IfcExtrudedAreaSolid"):
+                                        row["Length"] = getattr(item, "Depth", "N/A")
+                                        row["Width"] = getattr(item.Profile.ProfileWidth, "wrappedValue", "N/A") \
+                                            if hasattr(item.Profile, "ProfileWidth") else "N/A"
+                                        row["Height"] = getattr(item.Profile.ProfileHeight, "wrappedValue", "N/A") \
+                                            if hasattr(item.Profile, "ProfileHeight") else "N/A"
+                                    elif item.is_a("IfcBoundingBox"):
+                                        row["X_Dimension"] = item.XDim
+                                        row["Y_Dimension"] = item.YDim
+                                        row["Z_Dimension"] = item.ZDim
 
                     data.append(row)
 
+                # Speichere Daten in eine Excel-Datei
                 df = pd.DataFrame(data)
-                df.to_excel(file_path, index=False)
-                self.status_label.configure(text="Excel-Datei erfolgreich exportiert.", text_color="green")
-            except Exception as e:
-                self.status_label.configure(text=f"Export fehlgeschlagen: {e}", text_color="red")
 
-    def get_quantities_dict(self, element):
-        """Holt Mengeninformationen eines Elements als Dictionary."""
-        quantities = {}
-        if hasattr(element, "IsDefinedBy"):
-            for definition in element.IsDefinedBy:
-                if definition.is_a("IfcRelDefinesByProperties"):
-                    prop_def = definition.RelatingPropertyDefinition
-                    if prop_def.is_a("IfcElementQuantity"):
-                        for quantity in prop_def.Quantities:
-                            if hasattr(quantity, "Name") and hasattr(quantity, "NominalValue"):
-                                value = quantity.NominalValue
-                                if hasattr(value, "wrappedValue"):
-                                    value = value.wrappedValue
-                                quantities[quantity.Name] = value
-        return quantities
+                # Behalte nur ausgewählte Spalten
+                gewünschte_spalten = ["GlobalId", "Name", "Type", "Length", "Width", "Height", "Wandlänge an der Innenseite", "Wandlänge an der Außenseite", "Unterkante zu Meereshöhe", "Unterkante zu Ursprungsgeschoss", "Unterkante zu Projektursprung"]
+                df = df[[spalte for spalte in gewünschte_spalten if spalte in df.columns]]
+
+                # Entferne Spalten, die nur leere Werte haben
+                df = df.dropna(axis=1, how='all')
+
+                df.to_excel(file_path, index=False)
+                self.status_label.configure(
+                    text=f"Excel-Datei exportiert: {file_path}", text_color="green"
+                )
+            except Exception as e:
+                self.status_label.configure(text=f"Fehler: {e}", text_color="red")
+
 
 
 if __name__ == "__main__":
