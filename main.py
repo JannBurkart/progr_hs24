@@ -32,7 +32,7 @@ class IFCSearcher:
         header_label.pack(pady=20)
 
         # Dashboard-Container
-        container = ctk.CTkFrame(self.root, corner_radius=10, fg_color="#2e2e2e")  # Dashboard-Panel
+        container = ctk.CTkFrame(self.root, corner_radius=10, fg_color="#2e2e2e")  # <- Dashboard-Panel
         container.pack(pady=10, padx=20, fill="both", expand=True)
 
         # Hochladen-Button
@@ -53,13 +53,13 @@ class IFCSearcher:
         )
         filter_button.pack(pady=10, padx=20)
 
-        # Exportieren-Button
+        # IFC Exportieren-Button
         export_button = ctk.CTkButton(
             container, text="Neues IFC exportieren", command=self.export_ifc, fg_color="#4a4a4a", hover_color="#5a5a5a"
         )
         export_button.pack(pady=10, padx=20)
 
-        # Excel-Export-Button
+        # Excel Exportieren-Button
         excel_export_button = ctk.CTkButton(
             container, text="Als Excel exportieren", command=self.export_excel, fg_color="#4a4a4a", hover_color="#5a5a5a"
         )
@@ -72,7 +72,7 @@ class IFCSearcher:
         self.status_label.pack(pady=20, padx=20)
 
     def add_category_dropdown(self, parent):
-        """Fügt ein neues Dropdown-Menü unter den bisherigen hinzu und zentriert sie."""
+        """Fügt ein neues Dropdown unter den bisherigen hinzu und zentriert sie."""
         category_var = ctk.StringVar(value="Kategorie wählen")
         dropdown = ctk.CTkOptionMenu(
             parent,
@@ -89,7 +89,7 @@ class IFCSearcher:
         self.update_plus_button_position(parent)
 
     def update_plus_button_position(self, parent):
-        """Positioniert den Plus-Button rechts neben dem letzten Dropdown-Menü."""
+        """Positioniert den Plus-Button rechts neben dem letzten Dropdown."""
         if hasattr(self, "plus_button"):
             self.plus_button.destroy()  # <- Entferne den alten Button
         self.plus_button = ctk.CTkButton(
@@ -101,7 +101,7 @@ class IFCSearcher:
     # Beginn der Funktionen
     # IFC hochladen
     def load_ifc(self):
-        """Lädt eine IFC-Datei."""
+        """Lädt eine IFC-Datei hoch."""
         file_path = filedialog.askopenfilename(filetypes=[["IFC-Dateien", "*.ifc"]])
         if file_path:
             try:
@@ -215,7 +215,7 @@ class IFCSearcher:
 
     # Exportieren nach Excel
     def export_excel(self):
-        """Exportiert die gefilterten Elemente und ihre Maße in eine Excel-Datei."""
+        """Exportiert die gefilterten Elemente und ihre Masse in eine Excel-Datei."""
         if not self.filtered_elements:
             messagebox.showwarning("Warnung", "Keine gefilterten Elemente zum Exportieren!")
             return
@@ -233,7 +233,7 @@ class IFCSearcher:
                     quantities = self.get_quantities_dict(element)
                     row.update(quantities)
 
-                    # Füge geometrische Maße hinzu
+                    # Geometrische Massen
                     if hasattr(element, "Representation") and element.Representation:
                         for representation in element.Representation.Representations:
                             if representation.is_a("IfcShapeRepresentation"):
@@ -254,11 +254,11 @@ class IFCSearcher:
                 # Speichere Daten in eine Excel-Datei
                 df = pd.DataFrame(data)
 
-                # Behalte nur ausgewählte Spalten
-                gewünschte_spalten = ["GlobalId", "Name", "Type", "Length", "Width", "Height", "Wandlänge an der Innenseite", "Wandlänge an der Außenseite", "Unterkante zu Meereshöhe", "Unterkante zu Ursprungsgeschoss", "Unterkante zu Projektursprung"]
-                df = df[[spalte for spalte in gewünschte_spalten if spalte in df.columns]]
+                # Nur ausgewählte Spalten behalten
+                relevant_columns = ["GlobalId", "Name", "Type", "Length", "Width", "Height", "Wandlänge an der Innenseite", "Wandlänge an der Außenseite", "Unterkante zu Meereshöhe", "Unterkante zu Ursprungsgeschoss", "Unterkante zu Projektursprung"]
+                df = df[[spalte for spalte in relevant_columns if spalte in df.columns]]
 
-                # Entferne Spalten, die nur leere Werte haben
+                # Leere Werte entfernen
                 df = df.dropna(axis=1, how='all')
 
                 df.to_excel(file_path, index=False)
@@ -267,7 +267,6 @@ class IFCSearcher:
                 )
             except Exception as e:
                 self.status_label.configure(text=f"Fehler: {e}", text_color="red")
-
 
 
 if __name__ == "__main__":
