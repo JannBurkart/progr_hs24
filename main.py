@@ -77,7 +77,7 @@ class IFCSearcher:
         dropdown = ctk.CTkOptionMenu(
             parent,
             variable=category_var,
-            values=["Aussenwände", "Innenwände", "Geschossdecken", "Dächer", "Stützen", "Fenster", "Türen", "Absturzsicherungen", "Treppen", "Gelände"],
+            values=["Aussenwände", "Innenwände", "Geschossdecken", "Dächer", "Stützen", "Fenster", "Türen", "Absturzsicherungen", "Treppen", "Gelände", "Räume"],
             fg_color="#4a4a4a",
             button_color="#5a5a5a",
         )
@@ -157,6 +157,8 @@ class IFCSearcher:
             self.filtered_elements.extend(self.ifc_model.by_type("IfcStairFlight"))
         elif category == "Gelände":
             self.filtered_elements.extend(self.ifc_model.by_type("IfcGeographicElement"))
+        elif category == "Räume":
+            self.filtered_elements.extend(self.ifc_model.by_type("IfcSpace"))
 
     # Bauteil-Infos werden mitgegeben
     def filter_by_property(self, elements, property_name, expected_value):
